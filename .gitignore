@@ -1,34 +1,69 @@
-# --- Python ---
-__pycache__/
-*.py[cod]
-*$py.class
-
-# --- Virtual environments ---
+# === Python и окружение ===
 .venv/
-venv/
-env/
-.env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.tmp
+*.bak
 
-# --- Data and models ---
-data/raw/
-data/transcripts/
-data/summaries/
-logs/
-models/
-
-# --- System files ---
-.DS_Store
-Thumbs.db
-
-# --- IDE / Editor ---
+# === VSCode / IDE ===
 .vscode/
 .idea/
 
-# --- Checkpoints ---
-*.ckpt
-*.npy
-*.bin
+# === Кэш и метаданные ===
+*.DS_Store
+Thumbs.db
+*.ipynb_checkpoints/
+logs/
+wandb/
+.cache/
+hf_cache/
+__results__/
 
-# --- Jupyter ---
-.ipynb_checkpoints/
-notebooks/__pycache__/
+# === Модели и большие файлы ===
+models/
+outputs/
+embeddings/
+*.safetensors
+*.pt
+*.bin
+*.pth
+
+# === Данные ===
+data/raw/
+data/transcripts/
+data/summaries/
+data/knowledge_base/
+data/cleaned/
+data/embeddings/
+data/*.csv
+data/*.xlsx
+data/*.wav
+data/*.mp3
+data/*.mp4
+data/*.zip
+
+# Оставляем только датасеты и jsonl (чтобы пушить обучение)
+!data/datasets/
+!data/datasets/*.jsonl
+
+# === Ноутбуки (если не нужны на гите) ===
+notebooks/
+*.ipynb
+
+# === Hugging Face и CUDA кэш ===
+.huggingface/
+nv_cache/
+torch_cache/
+~$*
+
+# === Системные файлы ===
+*.ini
+*.bat
+*.cmd
+*.sh
+.env
+.env.local
+.env.*.local

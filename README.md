@@ -1,104 +1,95 @@
-🧩 AI-Assistant
+# 🧠 AI-Assistant (Fine-Tuned Gemma Edition)
 
-AI-Assistant is an experimental project that integrates local document retrieval, speech recognition, and OpenAI-based chat capabilities.
-It uses a Retrieval-Augmented Generation (RAG) architecture, combining large language model reasoning with a structured local knowledge base.
+AI-Assistant — это экспериментальная платформа для локального обучения и использования больших языковых моделей (LLM).  
+Проект позволяет очищать лекционные данные, обучать модели (Gemma-2, Mistral и др.) через LoRA-fine-tuning,  
+и запускать чат-интерфейс без подключения к внешним API.
 
-🧠 Overview
+---
 
-The system allows you to:
+## 🧩 Основные возможности
 
-Build and update a local knowledge base from text data
+- 🔹 **Очистка и подготовка данных** из транскриптов и лекций  
+- 🔹 **Fine-tuning моделей** (`Gemma-2-2B/9B`, `Mistral`) с помощью QLoRA  
+- 🔹 **Локальный чат-интерфейс** без интернета (`chat_local.py`)  
+- 🔹 **Гибкая архитектура**: можно комбинировать fine-tuning и RAG (поиск по базе лекций)  
+- 🔹 **Поддержка 4-битной квантизации (bitsandbytes)** — обучение даже на 8 GB GPU  
+- 🔹 **Автоматическая генерация датасета** в формате JSONL
 
-Generate vector embeddings for fast semantic search
+---
 
-Transcribe audio using OpenAI Whisper
+## 📁 Структура проекта
 
-Summarize large text sources
-
-Run an interactive RAG chat that answers using both local and external knowledge
-
-📁 Project Structure
 AI-ASSISTANT/
-├── .venv/                  # Virtual environment (ignored)
 ├── data/
-│   ├── knowledge_base/     # Source knowledge base and JSONL file
-│   ├── raw/                # Raw input data
-│   ├── summaries/          # Summarized text data
-│   └── transcripts/        # Transcribed audio files
-├── embeddings/             # FAISS index and metadata
-├── logs/                   # Runtime logs
-├── models/                 # Local models (ignored)
-├── notebooks/              # Jupyter notebooks and experiments
+│ ├── raw/ # исходные аудио и тексты
+│ ├── cleaned/ # очищенные лекции
+│ ├── datasets/ # готовые JSONL для обучения
+│ └── transcripts/ # транскрипты Whisper
+├── outputs/
+│ └── gemma_lectures_lora_v1/
+│ ├── checkpoint-200/ # веса и конфиг обученной LoRA
+│ └── logs/ # логи обучения
 ├── scripts/
-│   ├── build_kb.py         # Build structured knowledge base
-│   ├── embed_kb.py         # Create FAISS embeddings
-│   ├── OpenAI-Whisper.py   # Convert audio to text
-│   ├── rag_chat.py         # RAG chat interface
-│   ├── summarize.py        # Summarize large text inputs
-│   └── test.py             # Testing utilities
-└── requirements.txt
+│ ├── finetune_lora.py # обучение модели (QLoRA)
+│ ├── chat_local.py # локальный чат с обученной моделью
+│ ├── build_dataset.py # сбор лекций в JSONL
+│ └── utils/ # вспомогательные функции
+├── .gitignore
+├── requirements.txt
+└── README.md
 
-⚙️ Installation
 
-Clone the repository:
+---
 
+## ⚙️ Установка
+
+```bash
 git clone https://github.com/ZhuIik/AI-Assistant.git
 cd AI-Assistant
-
-
-Create and activate a virtual environment:
-
 python -m venv .venv
-# For Windows
-.venv\Scripts\activate
-# For macOS/Linux
-source .venv/bin/activate
-
-
-Install dependencies:
-
+.\.venv\Scripts\activate   # Windows
+# или source .venv/bin/activate  # macOS/Linux
 pip install -r requirements.txt
 
-🚀 Usage
+🚀 Использование
+1️⃣ Подготовка данных
 
-1. Build the knowledge base
+Очистите лекции и создайте датасет:
 
-python scripts/build_kb.py
-
-
-2. Generate vector embeddings
-
-python scripts/embed_kb.py
+python scripts/build_dataset.py
 
 
-3. Start the RAG chat
+→ создаст data/datasets/lectures_v1.jsonl
 
-python scripts/rag_chat.py
-
-
-4. (Optional) Transcribe audio
-
-python scripts/OpenAI-Whisper.py
+2️⃣ Fine-tuning модели (QLoRA)
+python scripts/finetune_lora.py
 
 
-5. (Optional) Summarize text
+После обучения веса сохранятся в
+outputs/gemma_lectures_lora_v1/checkpoint-XXX/
 
-python scripts/summarize.py
+3️⃣ Запуск локального чата
+python scripts/chat_local.py
 
-🧰 Technologies Used
 
-🐍 Python 3.10+
+Модель загрузит базовую Gemma-2-2B и LoRA-адаптер,
+после чего можно задавать вопросы напрямую.
 
-🧮 FAISS — semantic vector search
+4️⃣ Перенос модели на другой компьютер
 
-🎧 OpenAI Whisper — speech-to-text
+Для переноса достаточно скопировать:
 
-🧠 LangChain / OpenAI API — LLM integration
+outputs/gemma_lectures_lora_v1/checkpoint-XXX/
 
-📊 NumPy / pandas — data processing and analysis
 
-👤 Author
+и файл chat_local.py.
+Базовая модель скачивается автоматически с Hugging Face.
 
-Timofey Gorbatenkov
-📍 UrFU
-📧 reincon19@example.com
+🧰 Используемые технологии
+Компонент	Назначение
+🐍 Python 3.10+	Основной язык проекта
+🧮 Transformers / PEFT / TRL	Fine-tuning и работа с LLM
+💾 Bitsandbytes	4-битная квантизация (QLoRA)
+⚡ Accelerate	Оптимизация распределения памяти
+🎧 Whisper	(опционально) транскрипция аудио-лекций
+📊 Pandas / NumPy	обработка данных
