@@ -8,13 +8,25 @@ if len(sys.argv) < 2:
 
 filename = sys.argv[1]
 
-# если указано только имя — ищем в data/raw/
+# если указано только имя — ищем в data/raw/lectures/
 if not os.path.exists(filename):
-    possible_path = os.path.join("..", "data", "raw", filename)
-    if os.path.exists(possible_path):
-        filename = possible_path
+    # Попробовать путь относительно каталога скрипта (scripts/../data/raw/lectures/...)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    possible_path_script = os.path.normpath(os.path.join(script_dir, "..", "data", "raw", "lectures", filename))
+    # Также попробовать путь относительно текущей рабочей директории (./data/raw/lectures/...)
+    possible_path_cwd = os.path.normpath(os.path.join(os.getcwd(), "data", "raw", "lectures", filename))
+
+    if os.path.exists(possible_path_script):
+        filename = possible_path_script
+    elif os.path.exists(possible_path_cwd):
+        filename = possible_path_cwd
     else:
         print(f"❌ Файл не найден: {filename}")
+        print("Проверял пути:")
+        print(f" - как введён (относительно cwd): {os.path.abspath(filename)}")
+        print(f" - относительно скрипта: {possible_path_script}")
+        print(f" - относительно cwd/data/raw/lectures: {possible_path_cwd}")
+        print("Решения: передайте полный путь к .mp4 или поместите файл в 'data/raw/lectures/'.")
         sys.exit(1)
 
 # создаём имя для .wav рядом с исходником
@@ -31,7 +43,6 @@ command = [
     "-c:a", "pcm_s16le",
     output_file
 ]
-
 
 # выполняем
 subprocess.run(command, check=True)

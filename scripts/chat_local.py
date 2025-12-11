@@ -1,31 +1,23 @@
-# scripts/chat_local.py
-from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
-from peft import PeftModel
-import torch
+import os
+import sys
 
-BASE = "google/gemma-2-2b-it"                 # или "google/gemma-2-9b-it"
-ADAPTER = "outputs/gemma_lectures_lora_v1/checkpoint-3"  # путь к твоим обученным весам
+# текущий файл: ...\Ai-assistant\scripts\chat_local.py
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(SCRIPT_DIR)  # поднимаемся на уровень выше: Ai-assistant
 
-print("🔹 Загружаем модель...")
-tokenizer = AutoTokenizer.from_pretrained(BASE)
-model = AutoModelForCausalLM.from_pretrained(BASE, device_map="auto", torch_dtype=torch.float16)
-model = PeftModel.from_pretrained(model, ADAPTER)
+sys.path.insert(0, ROOT)
 
-pipe = pipeline(
-    "text-generation",
-    model=model,
-    tokenizer=tokenizer,
-    device_map="auto",
-    torch_dtype=torch.float16
-)
+from src.llm.chat import chat_once
 
-print("✅ Модель готова! Можешь задавать вопросы:\n")
+if __name__ == "__main__":
+    print("✅ Модель готова! Можешь задавать вопросы:\n")
 
-while True:
-    prompt = input("❓ Вопрос: ")
-    if prompt.lower() in ["exit", "quit", "stop"]:
-        print("🛑 Завершено.")
-        break
-    output = pipe(prompt, max_new_tokens=250, do_sample=True, temperature=0.7)[0]["generated_text"]
-    print("\n💬 Ответ модели:\n", output)
-    print("-" * 80)
+    while True:
+        prompt = input("❓ Вопрос: ")
+        if prompt.lower() in ["exit", "quit", "stop"]:
+            print("🛑 Завершено.")
+            break
+
+        answer = chat_once(prompt)
+        print("\n💬 Ответ модели:\n", answer)
+        print("-" * 80)

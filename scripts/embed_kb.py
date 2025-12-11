@@ -1,43 +1,38 @@
-import os
-import json
-import numpy as np
-import faiss
-from sentence_transformers import SentenceTransformer
+# scripts/embed_kb.py
+import sys
+from pathlib import Path
 
-# Пути
-KB_PATH = "../data/knowledge_base/kb.jsonl"
-OUT_DIR = "../embeddings"
-os.makedirs(OUT_DIR, exist_ok=True)
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT / "src"))
 
-# Загружаем модель эмбеддингов (лёгкая, но точная)
-model = SentenceTransformer("all-MiniLM-L6-v2")
+from rag.loader import load_documents
+from rag.chunker import split_into_chunks
+from rag.embedder import Embedder
+from rag.vector_store import VectorStore
 
-texts = []
-meta = []
 
-print("[i] Загружаем базу знаний...")
-with open(KB_PATH, "r", encoding="utf-8") as f:
-    for line in f:
-        item = json.loads(line)
-        # Можно использовать summary, если хочешь компактнее
-        text = item.get("summary") or item.get("text")
-        texts.append(text)
-        meta.append(item)
+def main():
+    docs = load_documents("data/cleaned/")
+    print(f"Loaded docs: {len(docs)}")
 
-print(f"[i] Всего фрагментов: {len(texts)}")
+    chunks = []
+    metadatas = []
+    for doc in docs:
+        for i, chunk in enumerate(split_into_chunks(doc["text"])):
+            chunks.append(chunk)
+            metadatas.append({
+                "id": f'{doc["id"]}_{i}',
+                "text": chunk,
+                "source": doc["source"],
+            })
 
-# Векторизация
-print("[i] Создание эмбеддингов...")
-embeddings = model.encode(texts, convert_to_numpy=True, show_progress_bar=True)
+    embedder = Embedder()
+    embeddings = embedder.encode(chunks)
+    store = VectorStore(dim=embeddings.shape[1])
+    store.add(embeddings, metadatas)
+    store.save("data/datasets/rag_index")
 
-# Сохраняем FAISS индекс
-dim = embeddings.shape[1]
-index = faiss.IndexFlatL2(dim)
-index.add(embeddings)
-faiss.write_index(index, os.path.join(OUT_DIR, "faiss_index.bin"))
+    print("Index built and saved.")
 
-# Сохраняем метаданные
-np.save(os.path.join(OUT_DIR, "meta.npy"), np.array(meta, dtype=object))
-
-print("✅ Векторизация завершена!")
-print(f"Индекс сохранён в {OUT_DIR}/faiss_index.bin")
+if __name__ == "__main__":
+    main()
