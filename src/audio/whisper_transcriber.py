@@ -215,7 +215,10 @@ def run_transcription(cfg: TranscriptionConfig):
 
     pipe = None
     if cfg.diarize:
+        # prefer explicit token from config; fall back to environment variables
         token = (cfg.hf_token or "").strip()
+        if not token:
+            token = (os.getenv("HUGGINGFACE_TOKEN") or os.getenv("HF_TOKEN") or "").strip()
         pipe = load_diarization_pipeline(token)
 
     input_path = Path(cfg.input_path)

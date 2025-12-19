@@ -12,3 +12,6 @@ data/
 
 # misc
 legacy/
+
+# local env files
+.env

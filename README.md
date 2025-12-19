@@ -139,6 +139,19 @@ python scripts/server.py
 6. Запуск клиента (Telegram или другой)
 python scripts/bot.py
 
+3.1. Переменные окружения (секреты)
+
+- Для безопасности токен бота не должен храниться в коде. Скопируйте файл `.env.example` в `.env` и заполните `BOT_TOKEN`.
+- Локально можно использовать `python-dotenv` или любую утилиту для загрузки `.env` в окружение перед запуском.
+- Пример (PowerShell):
+
+```powershell
+setx BOT_TOKEN "ваш-telegram-token"
+python scripts/bot.py
+```
+
+Файл `.env` добавлен в `.gitignore`, поэтому локальные секреты не попадут в репозиторий.
+
 4. Минимальные системные требования
 
 GPU: 6–8 GB VRAM
