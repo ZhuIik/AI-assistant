@@ -8,11 +8,11 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
-BOT_TOKEN = "7680460650:AAFTgS-qYMKdxaetZdzE0X6basEJujKY3qk"
+BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
 
-SERVER_URL = "http://127.0.0.1:5000/chat"
+# Allow overriding server URL via env for deployments/tests
+SERVER_URL = os.getenv("SERVER_URL", "http://127.0.0.1:5000/chat")
 
-bot = Bot(BOT_TOKEN)
 dp = Dispatcher()
 
 
@@ -63,7 +63,12 @@ async def handle_text(message: Message):
 async def main():
     logging.basicConfig(level=logging.INFO)
     if not BOT_TOKEN:
-        raise RuntimeError("Не указан токен бота. Вставь его в BOT_TOKEN или через переменную окружения.")
+        raise RuntimeError(
+            "Не указан токен бота. Установите переменную окружения BOT_TOKEN или TELEGRAM_BOT_TOKEN."
+        )
+
+    # create Bot instance at runtime so the token isn't stored in source
+    bot = Bot(BOT_TOKEN)
     await dp.start_polling(bot)
 
 

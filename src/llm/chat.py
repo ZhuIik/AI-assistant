@@ -1,9 +1,5 @@
 from src.rag.retriever import get_relevant_chunks
 from .model import load_pipeline
-import time
-import logging
-
-logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "Ты ассистент по материалам курса и лекций. "
@@ -53,12 +49,8 @@ def get_pipeline():
     global _pipe
     if _pipe is None:
         try:
-            logger.info("Загружаю модельный пайплайн (может занять время)...")
-            start = time.time()
             _pipe = load_pipeline()
-            logger.info("Пайплайн загружен за %.1f сек", time.time() - start)
         except Exception as e:
-            logger.exception("Ошибка при загрузке пайплайна")
             raise RuntimeError(f"Не удалось загрузить модельный пайплайн: {e}") from e
     return _pipe
 
@@ -67,8 +59,8 @@ def chat_once(prompt: str) -> str:
     """Единичный запрос к модели с RAG-контекстом."""
     full_prompt = build_rag_prompt(prompt, top_k=5)
 
-    pipe = get_pipeline()
-    raw = pipe(
+    # используем лениво загружаемый пайплайн
+    raw = get_pipeline()(  # type: ignore
         full_prompt,
         max_new_tokens=1200,
         do_sample=True,
