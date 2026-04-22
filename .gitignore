@@ -1,0 +1,17 @@
+# venv
+.venv/
+venv/
+
+# python
+__pycache__/
+*.pyc
+
+# data
+data/raw/
+
+
+# misc
+legacy/
+
+# local env files
+.env
