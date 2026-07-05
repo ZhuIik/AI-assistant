@@ -1,12 +1,19 @@
 import argparse
 import json
 import re
+import sys
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Optional
-
+from typing import Any, Callable, Optional
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from src.llm.annotate import AnnotationError, annotate_fragment
+
+DEFAULT_DRAFTS_DIR = ROOT / "data" / "drafts"
 DEFAULT_ANNOTATIONS_DIR = ROOT / "data" / "annotations"
 
 RUSSIAN_STOPWORDS = {
@@ -91,10 +98,16 @@ def parse_args() -> argparse.Namespace:
         description="Prefill annotation fields from draft annotation blocks."
     )
     parser.add_argument(
+        "--drafts-dir",
+        type=Path,
+        default=DEFAULT_DRAFTS_DIR,
+        help="Directory with *.draft.jsonl files (input, produced by build_annotation_drafts.py).",
+    )
+    parser.add_argument(
         "--annotations-dir",
         type=Path,
         default=DEFAULT_ANNOTATIONS_DIR,
-        help="Directory with *.draft.jsonl files.",
+        help="Directory to write *.annotations.jsonl files (output).",
     )
     parser.add_argument(
         "--max-keywords",
@@ -112,6 +125,17 @@ def parse_args() -> argparse.Namespace:
         "--skip-existing",
         action="store_true",
         help="Skip annotation files that already exist.",
+    )
+    parser.add_argument(
+        "--no-llm",
+        action="store_true",
+        help="Skip the LLM call and always use the heuristic rules (e.g. LM Studio is not running).",
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=4,
+        help="Fragments to send to the LLM in parallel (match LM Studio's Max Concurrent Predictions).",
     )
     return parser.parse_args()
 
@@ -339,9 +363,74 @@ def prefill_item(item: dict[str, Any], max_keywords: int) -> dict[str, Any]:
     return enriched
 
 
+def prefill_item_with_llm(item: dict[str, Any], max_keywords: int) -> dict[str, Any]:
+    """Same output shape as prefill_item, but topic/summary/keywords/questions and a
+    lightly ASR-corrected version of the text come from the local LLM. Falls back to
+    the heuristic rules for this item if the LLM is unreachable or returns junk."""
+    text = normalize_text(item.get("text", ""))
+    if not text:
+        return prefill_item(item, max_keywords)
+
+    try:
+        result = annotate_fragment(text)
+    except AnnotationError as exc:
+        print(f"[llm-fallback] block {item.get('id')}: {exc}")
+        return prefill_item(item, max_keywords)
+
+    cleaned_text = normalize_text(result.get("cleaned_text") or text) or text
+    keywords = [str(k).strip() for k in (result.get("keywords") or []) if str(k).strip()][:max_keywords]
+    questions = [str(q).strip() for q in (result.get("questions") or []) if str(q).strip()][:5]
+    interaction_type = str(result.get("interaction_type") or "").strip() or "lecture"
+    cognitive_level = str(result.get("cognitive_level") or "").strip() or "understand"
+    topic = str(result.get("topic") or "").strip() or "Фрагмент лекции"
+    summary = str(result.get("summary") or "").strip()
+    difficulty = infer_difficulty(cleaned_text, keywords, cognitive_level)
+
+    enriched = dict(item)
+    enriched["text_raw"] = text
+    enriched["text"] = cleaned_text
+    enriched["topic"] = topic
+    enriched["keywords"] = keywords
+    enriched["questions"] = questions
+    enriched["summary"] = summary
+    enriched["cognitive_level"] = cognitive_level
+    enriched["interaction_type"] = interaction_type
+    enriched["difficulty"] = difficulty
+    enriched["embedding"] = item.get("embedding", [])
+    return enriched
+
+
+def enrich_items(
+    items: list[dict[str, Any]],
+    enrich: Callable[[dict[str, Any], int], dict[str, Any]],
+    max_keywords: int,
+    concurrency: int,
+) -> list[dict[str, Any]]:
+    """Run `enrich` over all items, optionally in parallel (LLM calls are I/O-bound,
+    so threads are enough - no need for multiprocessing)."""
+    if concurrency <= 1 or len(items) <= 1:
+        return [enrich(item, max_keywords) for item in items]
+
+    results: list[Optional[dict[str, Any]]] = [None] * len(items)
+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
+        futures = {
+            executor.submit(enrich, item, max_keywords): index
+            for index, item in enumerate(items)
+        }
+        done = 0
+        for future in as_completed(futures):
+            index = futures[future]
+            results[index] = future.result()
+            done += 1
+            print(f"  [{done}/{len(items)}] fragment processed")
+
+    return results
+
+
 def main() -> None:
     args = parse_args()
-    files = sorted(args.annotations_dir.glob("*.draft.jsonl"))
+    args.annotations_dir.mkdir(parents=True, exist_ok=True)
+    files = sorted(args.drafts_dir.glob("*.draft.jsonl"))
     if args.lecture_ids:
         allowed = set(args.lecture_ids)
         files = [
@@ -349,7 +438,14 @@ def main() -> None:
             if lecture_id_from_draft_path(path) in allowed
         ]
     if not files:
-        raise SystemExit(f"No draft annotation files found in {args.annotations_dir}")
+        raise SystemExit(
+            f"No draft annotation files found in {args.drafts_dir} "
+            "(run scripts/build_annotation_drafts.py first)"
+        )
+
+    enrich = prefill_item if args.no_llm else prefill_item_with_llm
+    if args.no_llm:
+        print("Using heuristic rules only (--no-llm).")
 
     total = 0
     for path in files:
@@ -359,7 +455,7 @@ def main() -> None:
             continue
 
         items = load_jsonl(path)
-        enriched = [prefill_item(item, args.max_keywords) for item in items]
+        enriched = enrich_items(items, enrich, args.max_keywords, args.concurrency)
         write_jsonl(out_path, enriched)
         total += len(enriched)
         print(f"[done] {out_path} ({len(enriched)} annotations)")

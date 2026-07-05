@@ -1,41 +1,31 @@
-from pathlib import Path
-import torch
-from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
-from peft import PeftModel
-from src.config import BASE_MODEL, LORA_PATH
+import requests
+
+from src.config import LM_STUDIO_BASE_URL, LM_STUDIO_MODEL
+
+
+class LMStudioPipeline:
+    """Callable client for LM Studio's local OpenAI-compatible /v1/completions endpoint."""
+
+    def __init__(self, base_url: str = LM_STUDIO_BASE_URL, model: str = LM_STUDIO_MODEL):
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+
+    def __call__(self, prompt: str, max_new_tokens: int = 512, do_sample: bool = True, temperature: float = 0.7):
+        response = requests.post(
+            f"{self.base_url}/completions",
+            json={
+                "model": self.model,
+                "prompt": prompt,
+                "max_tokens": max_new_tokens,
+                "temperature": temperature if do_sample else 0.0,
+            },
+            timeout=300,
+        )
+        response.raise_for_status()
+        completion = response.json()["choices"][0]["text"]
+        return [{"generated_text": completion}]
 
 
 def load_pipeline():
-    print("🔹 Загружаем базовую модель Gemma...")
-    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
-
-    model = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL,
-        device_map="auto",
-        torch_dtype=torch.float16
-    )
-
-    print(f"🔹 Проверяем LoRA адаптер по пути:\n{LORA_PATH}")
-
-    adapter_config = LORA_PATH / "adapter_config.json"
-    if not adapter_config.exists():
-        raise FileNotFoundError(
-            f"\n❌ Не найден adapter_config.json!\n"
-            f"Проверенный путь: {adapter_config}\n"
-            f"Проверь LORA_PATH в config.py"
-        )
-
-    print("🔹 Подключаем LoRA адаптер...")
-    model = PeftModel.from_pretrained(model, str(LORA_PATH))
-
-    print("🔹 Собираем пайплайн...")
-    pipe = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        device_map="auto",
-        torch_dtype=torch.float16
-    )
-
-    print("✅ Модель с LoRA готова!")
-    return pipe
+    print(f"Connecting to LM Studio at {LM_STUDIO_BASE_URL} (model: {LM_STUDIO_MODEL})")
+    return LMStudioPipeline()

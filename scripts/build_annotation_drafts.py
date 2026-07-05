@@ -6,8 +6,8 @@ from typing import Any, Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SEGMENTS_DIR = ROOT / "data" / "segments"
-DEFAULT_ANNOTATIONS_DIR = ROOT / "data" / "annotations"
-DEFAULT_SPEAKER_MAP = DEFAULT_ANNOTATIONS_DIR / "speaker_map.json"
+DEFAULT_DRAFTS_DIR = ROOT / "data" / "drafts"
+DEFAULT_SPEAKER_MAP = ROOT / "data" / "annotations" / "speaker_map.json"
 SHORT_TURN_MARKERS = {
     "да", "ага", "угу", "окей", "хорошо", "ладно", "понятно", "ясно",
     "спасибо", "так", "вот", "ну", "нет", "конечно", "отлично",
@@ -25,10 +25,10 @@ def parse_args() -> argparse.Namespace:
         help="Directory with *.segments.jsonl files.",
     )
     parser.add_argument(
-        "--annotations-dir",
+        "--drafts-dir",
         type=Path,
-        default=DEFAULT_ANNOTATIONS_DIR,
-        help="Directory to write draft annotation files.",
+        default=DEFAULT_DRAFTS_DIR,
+        help="Directory to write draft annotation files (intermediate, regenerable).",
     )
     parser.add_argument(
         "--speaker-map",
@@ -340,7 +340,7 @@ def lecture_id_from_segments_path(path: Path) -> str:
 
 def main() -> None:
     args = parse_args()
-    args.annotations_dir.mkdir(parents=True, exist_ok=True)
+    args.drafts_dir.mkdir(parents=True, exist_ok=True)
     speaker_map = load_speaker_map(args.speaker_map)
 
     files = sorted(args.segments_dir.glob("*.segments.jsonl"))
@@ -355,7 +355,7 @@ def main() -> None:
 
     total_blocks = 0
     for path in files:
-        out_path = args.annotations_dir / path.name.replace(".segments.jsonl", ".draft.jsonl")
+        out_path = args.drafts_dir / path.name.replace(".segments.jsonl", ".draft.jsonl")
         if args.skip_existing and out_path.exists():
             print(f"[skip] {out_path} already exists")
             continue

@@ -35,7 +35,7 @@ output_file = base + ".wav"
 
 # команда ffmpeg
 command = [
-    r"C:\ProgramData\chocolatey\bin\ffmpeg.exe",
+    "ffmpeg",
     "-i", filename,
     "-ss", "00:00:00",
     "-ar", "16000",

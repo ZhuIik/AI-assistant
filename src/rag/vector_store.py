@@ -32,5 +32,7 @@ class VectorStore:
         D, I = self.index.search(query_emb.astype("float32"), top_k)
         results = []
         for idx in I[0]:
+            if idx == -1:
+                continue
             results.append(self.meta[idx])
         return results
