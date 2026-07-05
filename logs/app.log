@@ -2149,3 +2149,10 @@ requests.exceptions.ReadTimeout: HTTPConnectionPool(host='127.0.0.1', port=5000)
 2026-07-05 21:44:24 INFO __main__ server_chat response session_id=1508330132 elapsed_ms=35382
 2026-07-05 21:44:24 INFO werkzeug 127.0.0.1 - - [05/Jul/2026 21:44:24] "POST /chat HTTP/1.1" 200 -
 2026-07-05 21:44:24 INFO aiogram.event Update id=584666286 is handled. Duration 36218 ms by bot id=7680460650
+2026-07-05 21:53:17 INFO aiogram.dispatcher Polling stopped
+2026-07-05 21:53:17 ERROR aiogram.dispatcher Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+2026-07-05 21:53:17 WARNING aiogram.dispatcher Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 7680460650)
+2026-07-05 21:53:17 INFO aiogram.dispatcher Polling stopped for bot @ZhuIikBot id=7680460650 - 'AI-assistant'
+2026-07-05 22:04:18 INFO faiss.loader Loading faiss with AVX2 support.
+2026-07-05 22:04:18 INFO faiss.loader Successfully loaded faiss with AVX2 support.
+2026-07-05 22:04:52 INFO src.llm.chat chat_answer mode=rag session_id=- chunks=5 elapsed_ms=33711
