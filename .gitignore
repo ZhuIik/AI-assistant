@@ -10,6 +10,11 @@ __pycache__/
 data/raw/
 data/drafts/
 
+# temporary rollback backups (see docs/ARCHITECTURE.md Roadmap) - local safety net, not for git history
+data/annotations_old_pause/
+data/drafts_old_pause/
+data/datasets/rag_index_old_pause/
+
 
 # misc
 legacy/

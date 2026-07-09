@@ -34,6 +34,7 @@ copy .env.example .env
 | `LM_STUDIO_MODEL` | нет (есть значение по умолчанию) | Идентификатор модели, как он указан в LM Studio (`/v1/models`) | `google/gemma-4-e4b` |
 | `ANNOTATE_MODEL` | нет (по умолчанию = `LM_STUDIO_MODEL`) | Модель для офлайн-разметки аннотаций (`prefill_annotations.py`) — можно указать более лёгкую/быструю модель, чем для чата | `google/gemma-4-e2b` |
 | `EMBED_MODEL` | нет (есть значение по умолчанию) | Embedding-модель для RAG-индекса, тоже через LM Studio; multilingual — работает и с русским, и с английским | `text-embedding-nomic-embed-text-v1.5` |
+| `RAG_INDEX_DIR` | нет (по умолчанию `data/datasets/rag_index`) | Папка с FAISS-индексом, который читает бот. Переопределяется при тестировании альтернативного индекса (`scripts/eval_rag.py`), чтобы не трогать прод | `data/datasets/rag_index_by_sentence` |
 | `HUGGINGFACE_TOKEN` | нет, только если нужна диаризация | Токен для загрузки модели диаризации `pyannote/speaker-diarization-3.1` | `hf_...` |
 
 `.env` не должен попадать в репозиторий — он уже в `.gitignore`.
@@ -99,12 +100,14 @@ python scripts/OpenAI-Whisper.py data/raw/lectures --model medium --language ru
 ### 2.4. Разметка на смысловые блоки
 
 ```powershell
-python scripts/build_annotation_drafts.py --lecture-id Lecture_1
+python scripts/build_annotation_drafts_by_sentence.py --lecture-id Lecture_1
 ```
 
-Сегменты объединяются в блоки по паузам, смене спикера и длине (не по значению, а по эвристикам — подробнее в [ARCHITECTURE.md](ARCHITECTURE.md)). Результат: `data/drafts/<lecture_id>.draft.jsonl`.
+Сегменты объединяются в блоки по границам предложений с целевым размером (`--min-chars 800 --max-chars 1800` по умолчанию) — чанк никогда не обрывается внутри предложения (подробнее в [ARCHITECTURE.md](ARCHITECTURE.md)). Результат: `data/drafts/<lecture_id>.draft.jsonl`. Это активная стратегия, её же вызывает `scripts/ingest_lectures.py`.
 
 `data/drafts/` — промежуточная, регенерируемая папка (прямой вход для следующего шага 2.5), целиком в `.gitignore` и не хранится в репозитории постоянно. Если черновиков нет, а `data/segments/*.segments.jsonl` есть — просто перезапустите этот шаг перед 2.5.
+
+> Есть более старая стратегия чанкинга по паузам/длительности — `scripts/build_annotation_drafts.py`. Она больше не вызывается основным пайплайном (заменена из-за низкого качества: почти половина чанков получалась короче 200 символов, без содержательного контекста), но оставлена в репозитории для сравнения.
 
 ### 2.5. Заполнение topic/summary/keywords/questions
 
@@ -164,7 +167,31 @@ python scripts/bot.py
 python scripts/chat_local.py
 ```
 
-## 4. Типичные проблемы
+## 4. Проверка качества после изменений в пайплайне
+
+Если поменяли чанкинг, промпт, embedding-модель или что-то ещё, что влияет на качество ответов — не полагайтесь на глаз, прогоните фиксированный набор вопросов:
+
+```powershell
+python scripts/eval_rag.py --tag my-change --config chunking=sentence
+```
+
+Читает `data/eval/questions.jsonl` (вопрос + эталонный ответ + `lecture_id`), прогоняет через текущий RAG-пайплайн, считает RAGAS-метрики (`faithfulness`, `answer_relevancy`, `context_precision`, `context_recall`) и дописывает строку в `data/eval/results.jsonl` — так разные конфигурации сравнимы по времени.
+
+Полезные флаги:
+- `--lecture-id <id>` (можно повторять) — прогнать только вопросы по конкретной лекции. **Обязательно**, если тестируете индекс, который не покрывает все лекции (например, пилотный индекс на одной лекции) — иначе вопросы по отсутствующим в индексе лекциям ложно провалят `context_recall`.
+- `--config key=value ...` — произвольные заметки в записи результата (например `--config chunking=sentence reasoning=false`), для последующего сравнения.
+
+Чтобы прогнать eval на тестовом индексе, не трогая прод-индекс, соберите его отдельно и укажите `RAG_INDEX_DIR`:
+
+```powershell
+python scripts/embed_kb.py --annotations-dir data/annotations_test --index-dir data/datasets/rag_index_test
+$env:RAG_INDEX_DIR = "data/datasets/rag_index_test"
+python scripts/eval_rag.py --tag test-index --lecture-id Lecture_1
+```
+
+**Осторожно с сравнением разных `reasoning`-режимов** (LM Studio → Enable Thinking): RAGAS-судья — та же самая LLM, что генерирует ответы, так что включение/выключение thinking меняет строгость и судьи тоже, не только систему. Сравнивайте конфигурации в одном reasoning-режиме, иначе эффект перепутается с изменением строгости оценки.
+
+## 5. Типичные проблемы
 
 | Симптом | Причина | Решение |
 |---|---|---|

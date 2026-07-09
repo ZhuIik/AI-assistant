@@ -2,6 +2,7 @@ import argparse
 import json
 import re
 import sys
+import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -371,10 +372,23 @@ def prefill_item_with_llm(item: dict[str, Any], max_keywords: int) -> dict[str, 
     if not text:
         return prefill_item(item, max_keywords)
 
-    try:
-        result = annotate_fragment(text)
-    except AnnotationError as exc:
-        print(f"[llm-fallback] block {item.get('id')}: {exc}")
+    # LM Studio occasionally errors transiently under concurrent load (500s
+    # during model warm-up, 400s from context contention) - a couple of
+    # retries clears most of these instead of poisoning the chunk with the
+    # much weaker heuristic fallback.
+    result = None
+    last_exc: Optional[AnnotationError] = None
+    for attempt in range(3):
+        try:
+            result = annotate_fragment(text)
+            break
+        except AnnotationError as exc:
+            last_exc = exc
+            if attempt < 2:
+                time.sleep(2 * (attempt + 1))
+
+    if result is None:
+        print(f"[llm-fallback] block {item.get('id')}: {last_exc}")
         return prefill_item(item, max_keywords)
 
     cleaned_text = normalize_text(result.get("cleaned_text") or text) or text

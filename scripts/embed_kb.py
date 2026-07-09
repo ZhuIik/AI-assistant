@@ -4,6 +4,7 @@ The bot needs lecture/timecode references, so the index is built from
 ``data/annotations/*.annotations.jsonl`` instead of cleaned plain text.
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -12,12 +13,31 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-ANNOTATIONS_DIR = ROOT / "data" / "annotations"
-INDEX_DIR = ROOT / "data" / "datasets" / "rag_index"
+DEFAULT_ANNOTATIONS_DIR = ROOT / "data" / "annotations"
+DEFAULT_INDEX_DIR = ROOT / "data" / "datasets" / "rag_index"
 
 
-def _iter_annotations():
-    for path in sorted(ANNOTATIONS_DIR.glob("*.annotations.jsonl")):
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Build the lecture RAG index from reviewed annotation files."
+    )
+    parser.add_argument(
+        "--annotations-dir",
+        type=Path,
+        default=DEFAULT_ANNOTATIONS_DIR,
+        help="Directory with *.annotations.jsonl files.",
+    )
+    parser.add_argument(
+        "--index-dir",
+        type=Path,
+        default=DEFAULT_INDEX_DIR,
+        help="Directory to write the index (meta.json, manifest.json, index.faiss).",
+    )
+    return parser.parse_args()
+
+
+def _iter_annotations(annotations_dir: Path):
+    for path in sorted(annotations_dir.glob("*.annotations.jsonl")):
         with path.open("r", encoding="utf-8") as f:
             for line_no, line in enumerate(f, start=1):
                 line = line.strip()
@@ -72,16 +92,20 @@ def _iter_annotations():
 
 
 def main():
-    pairs = list(_iter_annotations())
+    args = parse_args()
+    annotations_dir = args.annotations_dir
+    index_dir = args.index_dir
+
+    pairs = list(_iter_annotations(annotations_dir))
     if not pairs:
-        raise RuntimeError(f"No annotations found in {ANNOTATIONS_DIR}")
+        raise RuntimeError(f"No annotations found in {annotations_dir}")
 
     chunks = [text for text, _ in pairs]
     metadatas = [meta for _, meta in pairs]
     print(f"Loaded annotated chunks: {len(chunks)}")
 
-    INDEX_DIR.mkdir(parents=True, exist_ok=True)
-    (INDEX_DIR / "meta.json").write_text(
+    index_dir.mkdir(parents=True, exist_ok=True)
+    (index_dir / "meta.json").write_text(
         json.dumps(metadatas, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
@@ -92,12 +116,12 @@ def main():
     }
 
     def _fall_back_to_lexical(reason: str) -> None:
-        (INDEX_DIR / "manifest.json").write_text(
+        (index_dir / "manifest.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
         print(f"{reason}; saved lexical index metadata only.")
-        print(f"Metadata saved to {INDEX_DIR / 'meta.json'}")
+        print(f"Metadata saved to {index_dir / 'meta.json'}")
 
     try:
         from src.rag.embedder import Embedder
@@ -116,14 +140,14 @@ def main():
 
     store = VectorStore(dim=embeddings.shape[1])
     store.add(embeddings, metadatas)
-    store.save(str(INDEX_DIR))
+    store.save(str(index_dir))
     manifest["vector_built"] = True
-    (INDEX_DIR / "manifest.json").write_text(
+    (index_dir / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
-    print(f"Index built and saved to {INDEX_DIR}")
+    print(f"Index built and saved to {index_dir}")
 
 if __name__ == "__main__":
     main()

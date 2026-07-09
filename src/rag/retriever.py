@@ -1,13 +1,12 @@
 import json
 import re
-from pathlib import Path
 from typing import Optional
 
 from rank_bm25 import BM25Okapi
 
-from src.config import EMBED_MODEL
+from src.config import EMBED_MODEL, RAG_INDEX_DIR
 
-INDEX_DIR = Path("data/datasets/rag_index")
+INDEX_DIR = RAG_INDEX_DIR
 
 _embedder = None
 _store = None

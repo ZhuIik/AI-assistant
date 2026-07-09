@@ -99,9 +99,10 @@ Ai-assistant/
 │   ├── ingest_lectures.py                   # один скрипт: видео -> транскрипт -> аннотации -> индекс
 │   ├── OpenAI-Whisper.py                    # транскрибация
 │   ├── convert_to_wav.py                    # конвертация видео/аудио в WAV
-│   ├── build_annotation_drafts.py           # сегменты -> смысловые блоки
+│   ├── build_annotation_drafts_by_sentence.py # сегменты -> смысловые блоки (по предложениям)
 │   ├── prefill_annotations.py               # блоки -> topic/summary/keywords
 │   ├── embed_kb.py                          # построение RAG-индекса
+│   ├── eval_rag.py                          # RAGAS-оценка качества RAG-пайплайна
 │   ├── server.py                            # HTTP API
 │   ├── bot.py                               # Telegram-клиент
 │   └── chat_local.py                        # локальный CLI для проверки ответов

@@ -133,7 +133,7 @@ def main() -> None:
         lecture_id_args += ["--lecture-id", lecture_id]
 
     print("== 3/4: building annotations ==")
-    run([sys.executable, str(SCRIPTS_DIR / "build_annotation_drafts.py"), *lecture_id_args])
+    run([sys.executable, str(SCRIPTS_DIR / "build_annotation_drafts_by_sentence.py"), *lecture_id_args])
 
     prefill_cmd = [
         sys.executable, str(SCRIPTS_DIR / "prefill_annotations.py"), *lecture_id_args,

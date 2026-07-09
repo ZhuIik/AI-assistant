@@ -38,3 +38,8 @@ ANNOTATE_MODEL = os.getenv("ANNOTATE_MODEL", LM_STUDIO_MODEL)
 # Embedding-модель для RAG-индекса (src/rag/embedder.py), тоже через LM Studio.
 # Multilingual, работает и с русским, и с английским текстом.
 EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-nomic-embed-text-v1.5")
+
+# Директория с FAISS-индексом/метаданными (src/rag/retriever.py). Переопределяется
+# при прогоне eval на тестовом индексе (например data/datasets/rag_index_by_sentence),
+# чтобы не трогать продакшн-индекс.
+RAG_INDEX_DIR = Path(os.getenv("RAG_INDEX_DIR", str(PROJECT_ROOT / "data" / "datasets" / "rag_index")))
