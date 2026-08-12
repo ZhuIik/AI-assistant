@@ -16,6 +16,10 @@ data/drafts_old_pause/
 data/datasets/rag_index_old_pause/
 
 
+# local-only docs, not for git history
+docs/ARCHITECTURE.md
+docs/EVAL_LOG.md
+
 # misc
 legacy/
 

@@ -33,7 +33,7 @@ copy .env.example .env
 | `LM_STUDIO_BASE_URL` | нет (есть значение по умолчанию) | Базовый URL локального OpenAI-совместимого сервера | `http://localhost:1234/v1` |
 | `LM_STUDIO_MODEL` | нет (есть значение по умолчанию) | Идентификатор модели, как он указан в LM Studio (`/v1/models`) | `google/gemma-4-e4b` |
 | `ANNOTATE_MODEL` | нет (по умолчанию = `LM_STUDIO_MODEL`) | Модель для офлайн-разметки аннотаций (`prefill_annotations.py`) — можно указать более лёгкую/быструю модель, чем для чата | `google/gemma-4-e2b` |
-| `EMBED_MODEL` | нет (есть значение по умолчанию) | Embedding-модель для RAG-индекса, тоже через LM Studio; multilingual — работает и с русским, и с английским | `text-embedding-nomic-embed-text-v1.5` |
+| `EMBED_MODEL` | нет (есть значение по умолчанию) | Embedding-модель для RAG-индекса, тоже через LM Studio; multilingual — работает и с русским, и с английским | `text-embedding-bge-m3` |
 | `RAG_INDEX_DIR` | нет (по умолчанию `data/datasets/rag_index`) | Папка с FAISS-индексом, который читает бот. Переопределяется при тестировании альтернативного индекса (`scripts/eval_rag.py`), чтобы не трогать прод | `data/datasets/rag_index_by_sentence` |
 | `HUGGINGFACE_TOKEN` | нет, только если нужна диаризация | Токен для загрузки модели диаризации `pyannote/speaker-diarization-3.1` | `hf_...` |
 
@@ -45,7 +45,7 @@ copy .env.example .env
 
 1. Установите [LM Studio](https://lmstudio.ai/).
 2. Скачайте instruct-модель, подходящую под требования из [README.md](../README.md#требования-к-llm-модели) (сейчас используется `gemma-4-E4B-it-GGUF`).
-3. Скачайте и загрузите также embedding-модель `text-embedding-nomic-embed-text-v1.5` (или другую multilingual embedding-модель на замену через `EMBED_MODEL`) — она нужна для построения и поиска по RAG-индексу (`scripts/embed_kb.py`, `src/rag/retriever.py`).
+3. Скачайте и загрузите также embedding-модель `text-embedding-bge-m3` (или другую multilingual embedding-модель на замену через `EMBED_MODEL` — см. таблицу сравнения кандидатов в [EVAL_LOG.md](EVAL_LOG.md)) — она нужна для построения и поиска по RAG-индексу (`scripts/embed_kb.py`, `src/rag/retriever.py`).
 4. Загрузите обе модели в LM Studio и включите **Local Server** (вкладка Developer → Start Server). LM Studio может обслуживать несколько загруженных моделей одновременно на одном сервере.
 5. Проверьте, что сервер отвечает и видит обе модели:
    ```powershell

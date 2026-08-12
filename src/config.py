@@ -35,6 +35,12 @@ LM_STUDIO_MODEL = os.getenv("LM_STUDIO_MODEL", "google/gemma-4-e4b")
 # легче/быстрее основной чат-модели — по умолчанию совпадает с LM_STUDIO_MODEL.
 ANNOTATE_MODEL = os.getenv("ANNOTATE_MODEL", LM_STUDIO_MODEL)
 
+# Модель-судья для RAGAS (scripts/eval_rag.py). По умолчанию совпадает с LM_STUDIO_MODEL
+# (как было раньше) — если явно не задать другую, поведение не меняется. Задать отдельную
+# модель нужно, чтобы проверить self-preference bias: судья и генератор — одна и та же
+# модель гораздо охотнее оправдывает свой же стиль ответа (см. EVAL_LOG.md).
+JUDGE_MODEL = os.getenv("JUDGE_MODEL", LM_STUDIO_MODEL)
+
 # Embedding-модель для RAG-индекса (src/rag/embedder.py), тоже через LM Studio.
 # Multilingual, работает и с русским, и с английским текстом.
 EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-nomic-embed-text-v1.5")

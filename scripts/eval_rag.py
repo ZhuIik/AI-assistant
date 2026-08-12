@@ -15,7 +15,10 @@ Usage:
 
 The judge and embeddings used by RAGAS itself point at the same LM Studio
 server as the app (LM_STUDIO_BASE_URL / EMBED_MODEL in src/config.py), so no
-external API key is needed.
+external API key is needed. The judge model defaults to LM_STUDIO_MODEL (same
+model that generates the answers) but can be set independently via JUDGE_MODEL
+- useful for checking whether the judge is inflating scores in the same
+model's own favor (self-preference bias, see EVAL_LOG.md).
 """
 
 import argparse
@@ -29,7 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.config import EMBED_MODEL, LM_STUDIO_BASE_URL, LM_STUDIO_MODEL
+from src.config import EMBED_MODEL, JUDGE_MODEL, LM_STUDIO_BASE_URL, LM_STUDIO_MODEL
 from src.llm.chat import build_rag_prompt
 from src.llm.model import load_pipeline
 from src.rag.retriever import get_relevant_chunks
@@ -87,7 +90,7 @@ def score_with_ragas(rows: list[dict]) -> dict:
     judge = ChatOpenAI(
         base_url=LM_STUDIO_BASE_URL,
         api_key="lm-studio",
-        model=LM_STUDIO_MODEL,
+        model=JUDGE_MODEL,
         temperature=0.0,
     )
     embeddings = OpenAIEmbeddings(
@@ -187,6 +190,7 @@ def main():
     config = {
         "embed_model": EMBED_MODEL,
         "chat_model": LM_STUDIO_MODEL,
+        "judge_model": JUDGE_MODEL,
         "top_k": args.top_k,
         "lecture_ids": args.lecture_ids or "all",
         **parse_config_overrides(args.config),

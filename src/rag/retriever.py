@@ -101,8 +101,10 @@ def _lexical_search(question: str, top_k: int) -> list[dict]:
 
 
 def _hybrid_rerank(question: str, vector_rows: list[dict], top_k: int) -> list[dict]:
+    """Reciprocal rank fusion: combine vector and lexical rankings by position,
+    not raw score, so BM25's unbounded score doesn't drown out the vector rank.
+    """
     lexical_rows = _lexical_search(question, top_k=max(top_k * 5, 20))
-    bm25_scores = _bm25_score_map(question)
 
     merged: dict[str, tuple[dict, float]] = {}
 
@@ -115,11 +117,7 @@ def _hybrid_rerank(question: str, vector_rows: list[dict], top_k: int) -> list[d
         existing_row, existing_bonus = merged.get(row_id, (row, 0.0))
         merged[row_id] = (existing_row, existing_bonus + 2.0 / rank)
 
-    scored = []
-    for row_id, (row, rank_bonus) in merged.items():
-        lexical = bm25_scores.get(row_id, 0.0)
-        scored.append((lexical + rank_bonus, row))
-
+    scored = [(rank_bonus, row) for row, rank_bonus in merged.values()]
     scored.sort(key=lambda item: item[0], reverse=True)
     return [row for _, row in scored[:top_k]]
 
@@ -137,7 +135,7 @@ def get_relevant_chunks(question: str, top_k: int = 5) -> list[dict]:
         import requests
 
         try:
-            q_emb = _embedder.encode([question])
+            q_emb = _embedder.encode([question], kind="query")
         except requests.RequestException:
             return _lexical_search(question, top_k=top_k)
 
